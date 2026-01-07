@@ -18,13 +18,13 @@ from datetime import datetime, timezone
 import requests  
   
 # ================= CONFIG =================  
-BASE_URL = "http://139.99.208.63/ints"  
-DATA_URL = "http://139.99.208.63/ints/agent/res/data_smscdr.php"  
-  
-BOT_TOKEN = "7448362382:AAGzYcF4XH5cAOIOsrvJ6E9MXqjnmOdKs2o"  
-CHAT_IDS = ["-1003140739791"]  
-  
-PHPSESSID = "07eaadf9f19b9135f4b350da129af35f"  
+BASE_URL = os.getenv("BASE_URL", "http://139.99.208.63/ints")
+DATA_URL = os.getenv("DATA_URL", "http://139.99.208.63/ints/agent/res/data_smscdr.php")
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_IDS = os.getenv("CHAT_IDS", "").split(",")
+
+PHPSESSID = os.getenv("PHPSESSID")
 POLL_INTERVAL = 15  # seconds  
   
 # ================= LOGGING =================  
