@@ -17,7 +17,7 @@ from datetime import datetime
 BASE_URL = "http://51.89.99.105/NumberPanel"
 API_PATH = "/client/res/data_smscdr.php"
 
-PHPSESSID = "PASTE_FRESH_PHPSESSID_HERE"
+PHPSESSID = "ct38cra540a4hil76g82dirrft"
 BOT_TOKEN = "PASTE_TELEGRAM_BOT_TOKEN_HERE"
 
 CHAT_ID = "-1003405109562"
