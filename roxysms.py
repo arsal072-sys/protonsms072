@@ -1,138 +1,89 @@
-#!/usr/bin/env python3
 import requests
 import time
 import re
-import logging
 import json
-import os
+import logging
 from datetime import datetime
+from pathlib import Path
 
 # ================= CONFIG =================
 
 AJAX_URL = "http://www.roxysms.net/agent/res/data_smscdr.php"
 
-# 🔐 ENV VARIABLES (Heroku Config Vars)
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
-PHPSESSID = os.getenv("PHPSESSID")
-
-if not BOT_TOKEN or not CHAT_ID or not PHPSESSID:
-    raise RuntimeError("Missing required ENV vars: BOT_TOKEN / CHAT_ID / PHPSESSID")
+BOT_TOKEN = "PUT_YOUR_BOT_TOKEN_HERE"
+CHAT_ID = "-100XXXXXXXXXX"
 
 COOKIES = {
-    "PHPSESSID": PHPSESSID
+    "PHPSESSID": "PUT_YOUR_PHPSESSID_HERE"
 }
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-    "X-Requested-With": "XMLHttpRequest",
-    "Accept": "application/json, text/javascript, */*; q=0.01"
-}
-
-CHECK_INTERVAL = 5  # seconds
+CHECK_INTERVAL = 12  # seconds
 STATE_FILE = "state.json"
 
 SUPPORT_URL = "https://t.me/botcasx"
 NUMBERS_URL = "https://t.me/CyberOTPCore"
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0",
+    "X-Requested-With": "XMLHttpRequest",
+    "Accept": "application/json, text/javascript, */*; q=0.01",
+}
 
 # =========================================
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("roxysms.log")
-    ]
 )
 
 session = requests.Session()
 session.headers.update(HEADERS)
 session.cookies.update(COOKIES)
 
-# ================= STATE =================
+last_seen_time = None
+cookie_alert_sent = False
+
+# ============ STATE =======================
 
 def load_state():
-    if os.path.exists(STATE_FILE):
+    global last_seen_time
+    if Path(STATE_FILE).exists():
         try:
-            with open(STATE_FILE, "r") as f:
-                data = json.load(f)
-                return datetime.strptime(data["last_seen_time"], "%Y-%m-%d %H:%M:%S")
+            data = json.loads(Path(STATE_FILE).read_text())
+            last_seen_time = datetime.fromisoformat(data["last_seen"])
         except Exception:
-            return None
-    return None
+            pass
 
+def save_state(ts):
+    Path(STATE_FILE).write_text(json.dumps({"last_seen": ts.isoformat()}))
 
-def save_state(dt):
-    with open(STATE_FILE, "w") as f:
-        json.dump(
-            {"last_seen_time": dt.strftime("%Y-%m-%d %H:%M:%S")},
-            f
-        )
-
-
-last_seen_time = load_state()
-
-# ================= HELPERS =================
+# ============ HELPERS =====================
 
 def extract_otp(text):
-    if not text:
-        return "N/A"
-    m = re.search(r"\b(\d{4,8})\b", text)
+    m = re.search(r"\b(\d{4,8})\b", text or "")
     return m.group(1) if m else "N/A"
 
+def extract_country(route):
+    if not route:
+        return "Unknown"
+    return route.split("-")[0].strip()
 
-def build_params(limit=5):
+def build_params():
     today = datetime.now().strftime("%Y-%m-%d")
     return {
         "fdate1": f"{today} 00:00:00",
         "fdate2": f"{today} 23:59:59",
         "frange": "",
-        "fclient": "",
+        warning := "",
         "fnum": "",
         "fcli": "",
-        "fgdate": "",
-        "fgmonth": "",
-        "fgrange": "",
-        "fgclient": "",
-        "fgnumber": "",
-        "fgcli": "",
         "fg": 0,
-        "sEcho": 1,
-        "iColumns": 7,
         "iDisplayStart": 0,
-        "iDisplayLength": limit,
+        "iDisplayLength": 10,
+        "sEcho": 1,
         "iSortCol_0": 0,
         "sSortDir_0": "desc",
-        "iSortingCols": 1
     }
-
-
-def format_message(row):
-    date = row[0]
-    raw_route = str(row[1]) if row[1] else "Unknown"
-    number = str(row[2]) if row[2] else "N/A"
-    raw_message = row[4]
-
-    # ✅ Country only
-    country = raw_route.split("-")[0].split("_")[0]
-    message = raw_message.strip() if raw_message else "Message not provided"
-
-    if not number.startswith("+"):
-        number = "+" + number
-
-    otp = extract_otp(message)
-
-    return (
-        "📩 *LIVE SMS RECEIVED*\n\n"
-        f"📞 *Number:* `{number}`\n"
-        f"🔢 *OTP:* 🔥 `{otp}` 🔥\n"
-        f"🌍 *Country:* {country}\n"
-        f"🕒 *Time:* {date}\n\n"
-        f"💬 *SMS:*\n{message}\n\n"
-        "⚡ *CYBER CORE OTP*"
-    )
-
 
 def send_telegram(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -145,22 +96,70 @@ def send_telegram(text):
             "inline_keyboard": [
                 [
                     {"text": "🆘 Support", "url": SUPPORT_URL},
-                    {"text": "📲 Numbers", "url": NUMBERS_URL}
+                    {"text": "📲 Numbers", "url": NUMBERS_URL},
                 ]
             ]
         }
     }
-    r = requests.post(url, json=payload, timeout=15)
-    if not r.ok:
-        logging.error("Telegram Error: %s", r.text)
+    requests.post(url, json=payload, timeout=10)
 
-# ================= CORE (ONLY LIVE) =================
+def notify_cookie_expired():
+    global cookie_alert_sent
+    if cookie_alert_sent:
+        return
+    cookie_alert_sent = True
+    send_telegram(
+        "⚠️ *COOKIE EXPIRED*\n\n"
+        "RoxySMS session logout ho gaya hai.\n"
+        "Please naya `PHPSESSID` update karo.\n\n"
+        "⚡ *CYBER CORE OTP*"
+    )
+
+def format_message(row):
+    date = row[0]
+    route_raw = row[1]
+    number = row[2]
+    service = row[3]
+    message = row[4]
+
+    if not number.startswith("+"):
+        number = "+" + number
+
+    otp = extract_otp(message)
+    country = extract_country(route_raw)
+
+    return (
+        "📩 *NEW SMS RECEIVED*\n\n"
+        f"📞 *Number:* `{number}`\n"
+        f"🔢 *OTP:* 🔥 `{otp}` 🔥\n"
+        f"🌍 *Country:* {country}\n"
+        f"🕒 *Time:* {date}\n\n"
+        f"💬 *SMS:*\n{message}\n\n"
+        "⚡ *CYBER CORE OTP*"
+    )
+
+# ============ CORE ========================
 
 def fetch_latest_sms():
     global last_seen_time
 
-    r = session.get(AJAX_URL, params=build_params(), timeout=20)
-    data = r.json()
+    try:
+        r = session.get(AJAX_URL, params=build_params(), timeout=25)
+    except requests.exceptions.RequestException:
+        return
+
+    if r.status_code in (401, 403):
+        notify_cookie_expired()
+        return
+
+    if "login" in r.text.lower():
+        notify_cookie_expired()
+        return
+
+    try:
+        data = r.json()
+    except Exception:
+        return
 
     rows = data.get("aaData", [])
     if not rows or not isinstance(rows[0], list):
@@ -185,13 +184,14 @@ def fetch_latest_sms():
             logging.info("LIVE OTP sent")
             return
 
-# ================= LOOP =================
+# ============ START =======================
 
+load_state()
 logging.info("🚀 RoxySMS Bot Started (ONLY LIVE MODE)")
 
 while True:
     try:
         fetch_latest_sms()
-    except Exception:
+    except Exception as e:
         logging.exception("ERROR")
     time.sleep(CHECK_INTERVAL)
