@@ -38,9 +38,9 @@ STATE_FILE = "state.json"
 DEVELOPER_URL = "https://t.me/botcasx"
 # Get from environment variables with better defaults
 NUMBERS_URL_1 = os.getenv("NUMBERS_URL_1", "https://t.me/CyberOTPCore")
-NUMBERS_URL_2 = os.getenv("NUMBERS_URL_2", "https://t.me/PremiumOTPService")
-SUPPORT_URL_1 = os.getenv("SUPPORT_URL_1", "https://t.me/OTPSupportGroup")
-SUPPORT_URL_2 = os.getenv("SUPPORT_URL_2", "https://t.me/OTPHelpDesk")
+NUMBERS_URL_2 = os.getenv("NUMBERS_URL_2", "https://t.me/nothing")
+SUPPORT_URL_1 = os.getenv("SUPPORT_URL_1", "https://t.me/nothing")
+SUPPORT_URL_2 = os.getenv("SUPPORT_URL_2", "https://t.me/nothing")
 
 # =========================================
 
