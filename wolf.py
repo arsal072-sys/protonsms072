@@ -34,13 +34,10 @@ HEADERS = {
 CHECK_INTERVAL = 10
 STATE_FILE = "state.json"
 
-# Button URLs
-DEVELOPER_URL = "https://t.me/botcasx"
-# Get from environment variables with better defaults
-NUMBERS_URL_1 = os.getenv("NUMBERS_URL_1", "https://t.me/alltgmethod11")
-NUMBERS_URL_2 = os.getenv("NUMBERS_URL_2", "https://t.me/CyberOTPCore")
-SUPPORT_URL_1 = os.getenv("SUPPORT_URL_1", "https://t.me/+zu_E8bhN0WU5OTNl")
-SUPPORT_URL_2 = os.getenv("SUPPORT_URL_2", "https://t.me/CYBER_OTP1_CORE")
+# Button URLs - 3 Buttons
+DEVELOPER_URL = os.getenv("DEVELOPER_URL", "https://t.me/botcasx")
+NUMBERS_URL_1 = os.getenv("NUMBERS_URL_1", "https://t.me/CyberOTPCore")
+NUMBERS_URL_2 = os.getenv("NUMBERS_URL_2", "https://t.me/alltgmethod11")
 
 # Mask phone number settings
 MASK_PHONE = os.getenv("MASK_PHONE", "true").lower() == "true"
@@ -109,6 +106,16 @@ def extract_otp(text):
     telegram_match = re.search(r'Telegram code\s+(\d{4,8})', text)
     if telegram_match:
         return telegram_match.group(1)
+    
+    # Signal codes
+    signal_match = re.search(r'#?SIGNAL code\s+(\d{4,8})', text, re.IGNORECASE)
+    if signal_match:
+        return signal_match.group(1)
+    
+    # WhatsApp codes
+    whatsapp_match = re.search(r'WhatsApp code\s+(\d{4,8})', text, re.IGNORECASE)
+    if whatsapp_match:
+        return whatsapp_match.group(1)
     
     # General patterns
     patterns = [
@@ -217,7 +224,10 @@ def format_message(row):
         # Extract country
         country = "Unknown"
         if route and isinstance(route, str):
-            country = route.split()[0] if route.split() else "Unknown"
+            # Split by numbers/dashes and take first word
+            country_parts = re.split(r'[\d-]', route, 1)
+            if country_parts and country_parts[0].strip():
+                country = country_parts[0].strip()
         
         # Extract OTP
         otp = extract_otp(message)
@@ -235,8 +245,7 @@ def format_message(row):
         safe_country = html.escape(str(country))
         safe_date = html.escape(str(date))
         
-        # Format message - use newlines instead of <br> tags
-        # Telegram HTML doesn't support <br>, use literal newlines
+        # Format message
         safe_message = html.escape(str(message))
         
         # Format as HTML with newlines
@@ -253,7 +262,7 @@ def format_message(row):
             f"💬 <b>Message Content</b>\n"
             f"<i>{safe_message}</i>\n"
             "━━━━━━━━━━━━━━━━━━━\n"
-            "⚡ <b>POWERED BY @Awmking072</b>"
+            "⚡ <b>POWERED BY @Queenansari072</b>"
         )
         
         return formatted
@@ -262,19 +271,14 @@ def format_message(row):
         return None
 
 def create_keyboard():
-    """Create inline keyboard with 5 buttons"""
+    """Create inline keyboard with 3 buttons in one row"""
     return {
         "inline_keyboard": [
-            # First row: 3 buttons
+            # Single row with 3 buttons
             [
                 {"text": "🧑‍💻 Dev", "url": DEVELOPER_URL},
-                {"text": "📱 Numbers 1", "url": NUMBERS_URL_1},
-                {"text": "📱 Numbers 2", "url": NUMBERS_URL_2}
-            ],
-            # Second row: 2 buttons
-            [
-                {"text": "🆘 Support 1", "url": SUPPORT_URL_1},
-                {"text": "🆘 Support 2", "url": SUPPORT_URL_2}
+                {"text": "📱 CyberOTPCore", "url": NUMBERS_URL_1},
+                {"text": "📱 All", "url": NUMBERS_URL_2}
             ]
         ]
     }
@@ -421,34 +425,20 @@ def fetch_latest_sms():
 def print_config():
     """Print configuration details"""
     logging.info("=" * 60)
-    logging.info("🚀 PREMIUM OTP BOT STARTED")
+    logging.info("🚀 CYBER OTP CORE BOT STARTED")
     logging.info("=" * 60)
     logging.info(f"Website URL: {AJAX_URL}")
     logging.info(f"Chat IDs: {', '.join(CHAT_IDS)}")
     logging.info(f"Check Interval: {CHECK_INTERVAL} seconds")
     logging.info(f"Mask Phone Numbers: {MASK_PHONE}")
     logging.info("=" * 60)
-    logging.info("Button Configuration:")
+    logging.info("Button Configuration (3 buttons in one row):")
     logging.info(f"1. 🧑‍💻 Dev: {DEVELOPER_URL}")
-    logging.info(f"2. 📱 Numbers 1: {NUMBERS_URL_1}")
-    logging.info(f"3. 📱 Numbers 2: {NUMBERS_URL_2}")
-    logging.info(f"4. 🆘 Support 1: {SUPPORT_URL_1}")
-    logging.info(f"5. 🆘 Support 2: {SUPPORT_URL_2}")
+    logging.info(f"2. 📱 CyberOTPCore: {NUMBERS_URL_1}")
+    logging.info(f"3. 📱 All: {NUMBERS_URL_2}")
     logging.info("=" * 60)
-    
-    # Check environment variables
-    env_vars = {
-        "NUMBERS_URL_2": NUMBERS_URL_2,
-        "SUPPORT_URL_1": SUPPORT_URL_1,
-        "SUPPORT_URL_2": SUPPORT_URL_2,
-        "MASK_PHONE": MASK_PHONE
-    }
-    
-    for var_name, value in env_vars.items():
-        if value and "example" not in str(value):
-            logging.info(f"✅ {var_name}: {value}")
-        else:
-            logging.warning(f"⚠️  {var_name} using default. Set with: heroku config:set {var_name}=YOUR_VALUE")
+    logging.info("Footer: POWERED BY CYBER OTP CORE")
+    logging.info("=" * 60)
 
 def main():
     """Main function"""
