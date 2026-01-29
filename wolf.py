@@ -276,7 +276,7 @@ def create_keyboard():
             # First row: 2 buttons
             [
                 {"text": "🧑‍💻 Dev", "url": DEVELOPER_URL},
-                {"text": "📱 CyberOTPCore", "url": NUMBERS_URL}
+                {"text": "📱 NUMBERS", "url": NUMBERS_URL}
             ]
         ]
     }
