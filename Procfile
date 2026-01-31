@@ -1,1 +1,1 @@
-worker: python wolf.py
+worker: python protonsms.py
